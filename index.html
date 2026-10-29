@@ -1,0 +1,1185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="keywords" content="plm, parallel, language, model, variational, decoding, auxiliary, pretraining, scaling, justus, will">
+
+
+  <title> PLM </title>
+
+  <link rel="icon" type="image/svg" href="images/favicon.svg?">
+  <link rel="mask-icon" href="images/favicon.svg?" color="#ff3500">
+
+  <link href="https://fonts.googleapis.com/css?family=Google+Sans|Noto+Sans|Castoro" rel="stylesheet">
+  <link href="css/bulma.min.css" rel="stylesheet">
+  <link href="css/bulma-carousel.min.css" rel="stylesheet">
+  <link href="css/bulma-slider.min.css" rel="stylesheet">
+  <link href="css/fontawesome.all.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/gh/jpswalsh/academicons@1/css/academicons.min.css" rel="stylesheet">
+  <link href="css/index.css" rel="stylesheet">
+
+  <style>
+    /* CSS variable fallbacks for token animation */
+    .hero.teaser {
+      --font-mono: monospace;
+      --font-sans: 'Google Sans', sans-serif;
+      --color-text-secondary: #666;
+      --color-border-secondary: #ddd;
+      --color-border-tertiary: #e5e5e5;
+      --color-background-secondary: #f5f5f5;
+      --border-radius-lg: 8px;
+    }
+    .hero.teaser .container.is-max-desktop { max-width: 1000px; }
+    .wrap { display: flex; gap: 0.75rem; padding: 1rem 0; font-family: var(--font-mono); font-size: 17px; align-items: flex-start; width: 100%; box-sizing: border-box; }
+    .panel { flex: 1 1 0; min-width: 0; }
+    .panel-label { font-family: var(--font-sans); font-size: 17px; font-weight: 500; color: var(--color-text-secondary); letter-spacing: .06em; text-transform: uppercase; margin-bottom: .5rem; }
+    .code-box { border: 1.5px solid var(--color-border-secondary); border-radius: var(--border-radius-lg); padding: .3rem .4rem; height: 142px; line-height: 1.4; overflow: hidden; width: 100%; box-sizing: border-box; transition: height 0.4s ease; }
+    .code-box.left-box { border-color: #E9A84C; }
+    .code-box.right-box { border-color: #4aad6e; }
+    .tok { display: inline-block; background: var(--color-background-secondary); border: 0.5px solid var(--color-border-tertiary); border-radius: 2px; padding: 0 1px; margin: 0; white-space: pre; transition: background .25s, color .25s, opacity .25s; font-size: 17px; }
+    .tok.accepted { background: #d4f0df; color: #1d6b3e; border-color: #7ecfa0; }
+    .tok.proposed { background: #dbeeff; color: #1a4a7a; border-color: #90bfef; }
+    .tok.fading { opacity: 0; }
+    .arrow-wrap { display: flex; flex-direction: column; align-items: center; justify-content: center; transition: height 0.4s ease; }
+    .arrow { font-size: 0.9rem; color: var(--color-text-secondary); width: 88px; text-align: center; white-space: nowrap; }
+    .arrow-steps { font-family: var(--font-sans); font-size: 13px; color: var(--color-text-secondary); margin-top: 3px; }
+    .step-badge { font-family: var(--font-sans); font-size: 17px; background: var(--color-background-secondary); border: 0.5px solid var(--color-border-tertiary); border-radius: 20px; padding: 2px 10px; color: var(--color-text-secondary); margin-top: .5rem; display: inline-block; }
+    .controls { display: flex; gap: 8px; margin-top: 1.25rem; flex-wrap: wrap; }
+    .prompt { font-family: var(--font-sans); font-style: italic; color: #aaa; margin-bottom: .3rem; }
+    @media (max-width: 975px) {
+      .tok { font-size: 11px; }
+      .arrow { font-size: 0.585rem; }
+      .arrow-steps { font-size: 8px; }
+      .wrap { gap: 0; }
+      .arrow-wrap { margin: 0 -0.5rem; }
+    }
+    @media (max-width: 670px) {
+      .wrap { gap: 0; flex-direction: column; }
+      .wrap .panel { width: 100%; }
+      .arrow-wrap { display: none; }
+      .panel > .subtitle { font-size: 80%; }
+      .code-box { line-height: 1; }
+    }
+  </style>
+
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+  <script src="https://documentcloud.adobe.com/view-sdk/main.js"></script>
+  <script defer src="js/fontawesome.all.min.js"></script>
+  <script src="js/bulma-carousel.min.js"></script>
+  <script src="js/bulma-slider.min.js"></script>
+  <script src="js/index.js"></script>
+</head>
+
+<body>
+<section class="hero">
+  <div class="hero-body">
+    <div class="container is-max-desktop">
+      <div class="columns is-centered">
+        <div class="column has-text-centered">
+          <h1 class="title is-1 publication-title">Parallel Language Models</h1>
+          <!-- Paper authors -->
+          <div class="is-size-5 publication-authors">
+            <span class="author-block">
+              <a href="https://fdraxler.github.io" target="_blank">Felix Draxler</a><sup>*</sup>,</span>
+            <span class="author-block">
+              <a href="https://mds.inf.ethz.ch/team/detail/robin-geyer" target="_blank">Robin Geyer</a><sup>*</sup>,</span>
+            <span class="author-block">
+              <a href="https://scholar.google.com/citations?user=y2Z7DNgAAAAJ&hl=en" target="_blank">Daniel Geyfman</a><sup>*</sup>,</span>
+            <span class="author-block">
+              <a href="https://www.farrinsofian.com" target="_blank">Farrin Sofian</a><sup>*</sup>,</span>
+            <span class="author-block">
+              <a href="https://www.justuswill.com" target="_blank">Justus Will</a><sup>*</sup>,</span>
+            <span class="author-block">
+              <a href="https://hpi.de/en/database-group/people/philipp-hildebrandt/" target="_blank">Philipp Hildebrandt</a>,</span>
+            <span class="author-block">
+              <a href="https://giosueio.github.io" target="_blank">Giosue Migliorini</a>,</span>
+            <span class="author-block">
+              <a href="https://scholar.google.com/citations?user=E8RKhwYAAAAJ&hl=en" target="_blank">Prakhar Srivastava</a>,</span>
+            <span class="author-block"><span class="author-nolink">Gagan Duggaraju Peddiraju</span>,</span>
+            <span class="author-block">
+              <a href="https://kpandey008.github.io" target="_blank">Kushagra Pandey</a>,</span>
+            <span class="author-block">
+              <a href="https://mds.inf.ethz.ch/team/detail/jorge-da-silva-goncalves" target="_blank">Jorge da Silva Gon&ccedil;alves</a>,</span>
+            <span class="author-block"><span class="author-nolink">Elijah Tavares</span>,</span>
+            <span class="author-block">
+              <a href="https://www.linkedin.com/in/jan-niklas-groeneveld/" target="_blank">Jan Groeneveld</a>,</span>
+            <span class="author-block">
+              <a href="https://yangmeng96.github.io" target="_blank">Yang Meng</a>,</span>
+            <span class="author-block">
+              <a href="https://mds.inf.ethz.ch/team/detail/julia-vogt" target="_blank">Julia Vogt</a>,</span>
+            <span class="author-block">
+              <a href="https://www.stephanmandt.com" target="_blank">Stephan Mandt</a>
+            </span>
+          </div>
+          <div class="is-size-5 publication-authors">
+            <span class="eql-cntrb"><small><sup>*</sup>Equal Contribution</small></span>
+          </div>
+
+          <div class="column has-text-centered">
+            <div class="publication-links">
+
+              <!-- Arxiv PDF link -->
+              <span class="link-block">
+                <a href="https://arxiv.org/pdf/2610.26693" target="_blank"
+                class="external-link button is-normal is-dark">
+                <span class="icon">
+                  <i class="fas fa-file-pdf"></i>
+                </span>
+                <span>Paper</span>
+                </a>
+              </span>
+
+              <!-- GitHub link -->
+              <span class="link-block">
+                <a href="https://github.com/mandt-lab/plm" target="_blank"
+                class="external-link button is-normal is-dark">
+                <span class="icon">
+                  <i class="fab fa-github"></i>
+                </span>
+                <span>Code</span>
+                </a>
+              </span>
+
+              <!-- ArXiv abstract Link -->
+              <span class="link-block">
+                <a href="https://arxiv.org/abs/2610.26693" target="_blank"
+                class="external-link button is-normal is-dark">
+                <span class="icon">
+                  <i class="ai ai-arxiv"></i>
+                </span>
+                <span>arXiv</span>
+                </a>
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Teaser image -->
+<section class="hero teaser">
+  <div class="container is-max-desktop">
+    <div class="hero-body">
+      <div style="width:100%; box-sizing:border-box;">
+        <div class="wrap">
+          <div class="panel">
+            <div class="code-box left-box" id="left-box"></div>
+            <p class="subtitle has-text-centered" style="margin-top:0.5rem;">Autoregressive</p>
+          </div>
+          <div class="arrow-wrap">
+            <div class="arrow" id="arrow-label">→</div>
+            <div class="arrow-steps">token/s</div>
+          </div>
+          <div class="panel">
+            <div class="code-box right-box" id="right-box"></div>
+            <p class="subtitle has-text-centered" style="margin-top:0.5rem;">PLM</p>
+          </div>
+        </div>
+      </div>
+      <h2 class="subtitle has-text-centered">
+        Our Parallel Language Model <em>(right)</em> generates several coordinated tokens per model call,
+        producing a valid answer faster than a comparable autoregressive model <em>(left)</em>.
+        <span style="background:#dbeeff; padding:0 3px;">Blue</span> tokens are proposed in one PLM call;
+        <span style="background:#d4ecd4; padding:0 3px;">green</span> tokens are accepted by the verifier;
+        <span style="background:#e8e8e8; padding:0 3px;">gray</span> tokens show the remaining steps the
+        autoregressive model would still need. Generation is shown at 1/60x speed.
+      </h2>
+    </div>
+  </div>
+</section>
+
+<!-- TLDR -->
+<section class="section hero is-light">
+  <div class="container is-max-desktop">
+    <div class="columns is-centered has-text-centered">
+      <div class="column is-four-fifths">
+        <h2 class="title is-3">TLDR</h2>
+        <div class="content has-text-justified">
+          <p>
+            PLMs are language models that <strong>generate several coordinated tokens in one forward pass</strong>,
+            trained from scratch on a loss that includes a parallel decoding objective. They match autoregressive quality while answering <strong>2.3&ndash;5.7&times; faster</strong>, and
+            get more parallel as they scale.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Paper abstract -->
+<section class="section hero is-light">
+  <div class="container is-max-desktop">
+    <div class="columns is-centered has-text-centered">
+      <div class="column is-four-fifths">
+        <h2 class="title is-3">Abstract</h2>
+        <div class="content has-text-justified">
+          <p>
+            Autoregressive language models emit one token per forward pass. This causes high inference latency, in
+            particular as models are scaled up for quality. In this paper, we introduce Parallel Language Models (PLMs),
+            which generate mutually consistent tokens in one forward pass by routing dependencies through latent
+            auxiliary variables. PLMs are trained using a variational bound that reduces to an autoregressive loss plus a
+            parallel decoding loss. Empirically, PLMs are on a faster and better Pareto frontier than autoregressive and
+            discrete diffusion baselines. Pretrained PLMs achieve near-autoregressive pretraining loss on model scales of
+            80M to 3B parameters, and speedup follows a power law in model size. When post-trained, our 1.3B model
+            matches or exceeds an identically trained autoregressive model on math, coding, and instruction-following
+            benchmarks, <strong>speeding up inference 2.3&ndash;5.7&times;</strong>. Together, we show that parallel
+            generation can be trained from a single training objective at autoregressive quality.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Methodology -->
+<section class="section hero">
+  <div class="container is-max-desktop">
+    <div class="column has-text-centered">
+      <h2 class="title is-3">How It Works</h2>
+
+      <!-- Block 1: Variational training -->
+      <div class="content has-text-justified">
+        <h3 class="title is-4">Self-Distilling Parallel Language Models</h3>
+        <p>
+          We view parallel text generation through the lens of a variational auto-encoder. During inference, a parallel
+          decoder maps a vector of random auxiliaries to a coherent sequence in a single model call.
+          The auxiliaries fully capture the dependencies between tokens.
+          To train directly on text, a PLM pairs the decoder with an <strong>autoregressive encoder</strong> that
+          maps each training token to an auxiliary that decodes back to it. Maximizing an evidence lower bound
+          (ELBO) on the data likelihood then reduces to a simple objective: a standard <strong>autoregressive
+          loss</strong> for the encoder plus a <strong>parallel reconstruction loss</strong> for the decoder.
+          Encoder and decoder share all transformer weights and differ only in their input embeddings.
+        </p>
+      </div>
+      <img src="images/training.png" style="height: auto; width: auto;" alt="PLM training: autoregressive encoder, auxiliary assignment and parallel decoder"/>
+
+      <!-- Block 2: Auxiliaries -->
+      <div class="content has-text-justified" style="margin-top: 2rem;">
+        <h3 class="title is-4">Geometry-Aware Auxiliaries</h3>
+        <div class="columns is-vcentered">
+          <div class="column is-two-thirds">
+            <p>
+              Auxiliaries are a fixed set of unit vectors in the model's embedding space. Each one is assigned to
+              its most similar token embedding, with a per-token bias so that the share of auxiliaries belonging to a
+              token equals its probability under the autoregressive encoder &mdash; a weighted Voronoi tessellation of
+              the sphere. Unlike quantile-based auxiliaries, this naturally exploits similarity between tokens.
+            </p>
+          </div>
+          <div class="column has-text-centered">
+            <img src="images/auxiliary-encoding.png" style="height: auto; width: 100%; max-width: 320px;" alt="Voronoi auxiliary assignment around token embeddings"/>
+          </div>
+        </div>
+      </div>
+
+      <!-- Block 3: Inference -->
+      <div class="content has-text-justified" style="margin-top: 2rem;">
+        <h3 class="title is-4">Parallel Inference</h3>
+        <p>
+          At inference, randomly drawn auxiliaries are fed to the decoder, which proposes a block of coordinated tokens
+          in one call. In the next call, the encoder verifies these proposals while the decoder already proposes the next
+          block &mdash; both in a single forward pass (adapting Quadratic Decoding). Beyond exact verification, a
+          <strong>relaxed acceptance rule</strong> keeps any proposed token that is likely under the encoder, increasing
+          accepted tokens per call by 46.5% on average at comparable quality.
+        </p>
+      </div>
+      <img src="images/inference.png" style="height: auto; width: auto;" alt="PLM inference with simultaneous proposal and verification"/>
+    </div>
+  </div>
+</section>
+
+<!-- Results -->
+<section class="section hero is-lightgrey">
+  <div class="container is-max-desktop">
+    <div class="column has-text-centered">
+      <h2 class="title is-3">Results</h2>
+
+      <div class="content has-text-justified">
+        <h3 class="title is-4">A Faster and Better Pareto Frontier</h3>
+        <p>
+          After pretraining, PLMs beat publicly available autoregressive and discrete diffusion models on
+          text continuation. PLMs <strong>outperform autoregressive models at the same
+          inference speed</strong>, despite being trained on only 25B&ndash;300B tokens versus trillions, and outperform
+          all tested discrete diffusion models, including few-step ones.
+        </p>
+      </div>
+      <img src="images/pareto.png" style="height: auto; width: auto; mix-blend-mode: multiply;" alt="LLM-as-a-judge Elo versus tokens per second"/>
+
+      <div class="content has-text-justified" style="margin-top: 2rem;">
+        <h3 class="title is-4">Better and More Parallel with Scale</h3>
+        <p>
+          Across 80M to 3B parameters, PLMs reach near-autoregressive loss. They get <strong>more parallel with scale</strong>,
+          as the amount of correctly reconstructed grows as a power law in model size and training tokens.
+          The encoder-to-decoder ratio &beta; controls the quality&ndash;parallelism trade-off.
+        </p>
+      </div>
+      <img src="images/scaling-laws.png" style="height: auto; width: auto; mix-blend-mode: multiply;" alt="Scaling laws for loss and reconstructed tokens"/>
+
+      <div class="content has-text-justified" style="margin-top: 2rem;">
+        <h3 class="title is-4">Post-Training</h3>
+        <p>
+          After SFT and DPO, our 1.3B PLMs match or exceed an identically post-trained autoregressive model on math,
+          coding, and instruction following, while answering <strong>2.3&ndash;5.7&times; faster</strong>.
+          The 3B PLM improves quality further.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- BibTex citation -->
+<section class="section" id="BibTeX">
+  <div class="container is-max-desktop content">
+    <pre><code>@article{draxler2026plm,
+  title={Parallel Language Models via Variational Decoding},
+  author={Felix Draxler and Robin C. Geyer and Daniel Geyfman and Farrin Marouf Sofian and Justus Will and Philipp Hildebrandt and Giosue Migliorini and Prakhar Srivastava and Gagan Sai Trinadh Duggaraju Peddiraju and Kushagra Pandey and Jorge da Silva Gon{\c{c}}alves and Elijah Tavares and Jan Niklas Groeneveld and Yang Meng and Julia E. Vogt and Stephan Mandt},
+  journal={arXiv preprint arXiv:2610.26693},
+  year={2026}
+}</code></pre>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer class="footer">
+  <div class="container">
+    <div class="columns is-centered">
+      <div class="column is-8">
+        <div class="content">
+          <p>
+            &copy; Copyright
+            <span id="copyright">
+              <script>
+                  document.getElementById('copyright').appendChild(document.createTextNode(new Date().getFullYear()))
+              </script>
+            </span>
+            Justus Will. Adapted from <a href="https://github.com/eliahuhorwitz/Academic-project-page-template" target="_blank">here</a>.
+          </p>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</footer>
+
+
+<script>
+// Real per-call wall times on one RTX 6000 Ada, slowed by SLOWDOWN for both sides alike.
+const SLOWDOWN = 60;
+const HOLD_MS = 4000;
+
+document.head.insertAdjacentHTML('beforeend', '<style>.tok.skipped { background: #f5f5f5; color: #aaa; border-color: #e5e5e5; }</style>');
+
+const EXAMPLES = [
+ {
+  "label": "HumanEval/22",
+  "prompt": "Discard all non-integers.",
+  "ar": {
+   "msPerToken": 7.136,
+   "tokens": [
+    "``",
+    "`",
+    "python",
+    "\n",
+    "def",
+    " filter",
+    "_",
+    "integ",
+    "ers",
+    "(",
+    "values",
+    ":",
+    " List",
+    "[",
+    "Any",
+    "])",
+    " ->",
+    " List",
+    "[",
+    "int",
+    "]:",
+    "\n",
+    " ",
+    " ",
+    " ",
+    " \"\"\"",
+    "\n",
+    " ",
+    " ",
+    " ",
+    " Given",
+    " a",
+    " list",
+    " of",
+    " arbitrary",
+    " Python",
+    " (",
+    "or",
+    " any",
+    ")",
+    " type",
+    " values",
+    " only",
+    " filter",
+    " for",
+    " integers",
+    "\n",
+    " ",
+    " ",
+    " ",
+    " >>>",
+    " filter",
+    "_",
+    "integ",
+    "ers",
+    "(",
+    "['",
+    "a",
+    "',",
+    " 3",
+    ".",
+    "14",
+    ",",
+    " 5",
+    "])",
+    "\n",
+    " ",
+    " ",
+    " ",
+    " [",
+    "5",
+    "]",
+    "\n",
+    " ",
+    " ",
+    " ",
+    " >>>",
+    " filter",
+    "_",
+    "integ",
+    "ers",
+    "([",
+    "1",
+    ",",
+    " 2",
+    ",",
+    " 3",
+    ",",
+    " '",
+    "abc",
+    "',",
+    " {",
+    "},",
+    " [",
+    "]]",
+    ")",
+    "\n",
+    " ",
+    " ",
+    " ",
+    " [",
+    "1",
+    ",",
+    " 2",
+    ",",
+    " 3",
+    "]",
+    "\n",
+    " ",
+    " ",
+    " ",
+    " \"\"\"",
+    "\n",
+    " ",
+    " ",
+    " ",
+    " return",
+    " [",
+    "value",
+    " for",
+    " value",
+    " in",
+    " values",
+    " if",
+    " is",
+    "instance",
+    "(",
+    "value",
+    ",",
+    " int",
+    ")]",
+    "\n",
+    "``",
+    "`"
+   ]
+  },
+  "ptp": {
+   "msPerCall": 7.884,
+   "calls": [
+    {
+     "candidates": [
+      "Here",
+      " is",
+      " the",
+      " fully",
+      " implementation",
+      " of",
+      " the",
+      "filter"
+     ],
+     "accept": 4
+    },
+    {
+     "candidates": [
+      " implemented",
+      " Python",
+      " function",
+      ":",
+      "\n",
+      "\n",
+      "``"
+     ],
+     "accept": 7
+    },
+    {
+     "candidates": [
+      "`",
+      "python",
+      "\n",
+      "from",
+      " typing",
+      " import",
+      " List"
+     ],
+     "accept": 7
+    },
+    {
+     "candidates": [
+      ",",
+      " Any",
+      "\n",
+      "\n",
+      "def",
+      " filter",
+      "_"
+     ],
+     "accept": 7
+    },
+    {
+     "candidates": [
+      "integ",
+      "ers",
+      "(",
+      "values",
+      ":",
+      " List",
+      "["
+     ],
+     "accept": 7
+    },
+    {
+     "candidates": [
+      "Any",
+      "])",
+      " ->",
+      " List",
+      "[",
+      "int",
+      "]:"
+     ],
+     "accept": 7
+    },
+    {
+     "candidates": [
+      "\n",
+      " ",
+      " ",
+      " ",
+      " \"\"\"",
+      "\n",
+      " "
+     ],
+     "accept": 7
+    },
+    {
+     "candidates": [
+      " ",
+      " ",
+      " Filter",
+      " given",
+      " list",
+      " of",
+      " any"
+     ],
+     "accept": 7
+    },
+    {
+     "candidates": [
+      " python",
+      " values",
+      " only",
+      " for",
+      " integers",
+      ".",
+      " "
+     ],
+     "accept": 6
+    },
+    {
+     "candidates": [
+      "\n\n",
+      " ",
+      " ",
+      " ",
+      " >>>",
+      "\n",
+      " "
+     ],
+     "accept": 5
+    },
+    {
+     "candidates": [
+      " filter",
+      "_",
+      "integ",
+      "ers",
+      "(",
+      "['",
+      "a"
+     ],
+     "accept": 7
+    },
+    {
+     "candidates": [
+      "',",
+      " 3",
+      ".",
+      "14",
+      ",",
+      " 5",
+      "])"
+     ],
+     "accept": 7
+    },
+    {
+     "candidates": [
+      "\n",
+      " ",
+      " ",
+      " ",
+      " [",
+      "5",
+      "]"
+     ],
+     "accept": 7
+    },
+    {
+     "candidates": [
+      "\n",
+      " ",
+      " ",
+      " ",
+      " >>>",
+      " filter",
+      "_"
+     ],
+     "accept": 7
+    },
+    {
+     "candidates": [
+      "integ",
+      "ers",
+      "([",
+      "1",
+      ",",
+      " 2",
+      ","
+     ],
+     "accept": 7
+    },
+    {
+     "candidates": [
+      " 3",
+      ",",
+      " '",
+      "abc",
+      "',",
+      " {",
+      "},"
+     ],
+     "accept": 7
+    },
+    {
+     "candidates": [
+      " [",
+      "]]",
+      ")",
+      "\n",
+      " ",
+      " ",
+      " "
+     ],
+     "accept": 7
+    },
+    {
+     "candidates": [
+      " [",
+      "1",
+      ",",
+      " 2",
+      ",",
+      " 3",
+      "]"
+     ],
+     "accept": 7
+    },
+    {
+     "candidates": [
+      "\n",
+      " ",
+      " ",
+      " ",
+      " \"\"\"",
+      "\n",
+      " "
+     ],
+     "accept": 7
+    },
+    {
+     "candidates": [
+      " ",
+      " ",
+      " return",
+      " [",
+      "value",
+      " for",
+      " value"
+     ],
+     "accept": 7
+    },
+    {
+     "candidates": [
+      " in",
+      " values",
+      " if",
+      " is",
+      "instance",
+      "(",
+      "value"
+     ],
+     "accept": 7
+    },
+    {
+     "candidates": [
+      ",",
+      " int",
+      ")]",
+      "\n",
+      "``",
+      "`"
+     ],
+     "accept": 6
+    }
+   ]
+  }
+ },
+ {
+  "label": "GSM8K/79",
+  "prompt": "Groomer costs $100, how much is 30% off?",
+  "ar": {
+   "msPerToken": 7.191,
+   "tokens": [
+    "Step",
+    " 1",
+    ":",
+    " Deter",
+    "mine",
+    " the",
+    " original",
+    " cost",
+    " of",
+    " the",
+    " grooming",
+    ".",
+    " ",
+    "\n",
+    "The",
+    " original",
+    " cost",
+    " is",
+    " $",
+    "100",
+    ".",
+    "\n",
+    "\n",
+    "Step",
+    " 2",
+    ":",
+    " Calcul",
+    "ate",
+    " the",
+    " discount",
+    " amount",
+    ".",
+    " ",
+    "\n",
+    "The",
+    " discount",
+    " is",
+    " 30",
+    "%",
+    " of",
+    " $",
+    "100",
+    ".",
+    " ",
+    "\n",
+    "Disc",
+    "ount",
+    " amount",
+    " =",
+    " 30",
+    "%",
+    " of",
+    " $",
+    "100",
+    " =",
+    " 0",
+    ".",
+    "30",
+    " ×",
+    " $",
+    "100",
+    " =",
+    " $",
+    "30",
+    ".",
+    "\n",
+    "\n",
+    "Step",
+    " 3",
+    ":",
+    " Sub",
+    "t",
+    "ract",
+    " the",
+    " discount",
+    " amount",
+    " from",
+    " the",
+    " original",
+    " cost",
+    ".",
+    " ",
+    "\n",
+    "Gro",
+    "oming",
+    " cost",
+    " after",
+    " discount",
+    " =",
+    " $",
+    "100",
+    " -",
+    " $",
+    "30",
+    " =",
+    " $",
+    "70",
+    ".",
+    "\n",
+    "\n",
+    "The",
+    " answer",
+    " is",
+    " $",
+    "70",
+    "."
+   ]
+  },
+  "ptp": {
+   "msPerCall": 7.816,
+   "calls": [
+    {
+     "candidates": [
+      "Step",
+      " 1",
+      ":",
+      " Calcul",
+      "ate",
+      " the",
+      " the",
+      " cost"
+     ],
+     "accept": 6
+    },
+    {
+     "candidates": [
+      " discount",
+      " amount",
+      " discount",
+      "\n",
+      "The",
+      " original",
+      " discount"
+     ],
+     "accept": 2
+    },
+    {
+     "candidates": [
+      ".",
+      "\n",
+      "The",
+      " groom",
+      "er",
+      " is",
+      " $"
+     ],
+     "accept": 5
+    },
+    {
+     "candidates": [
+      " offers",
+      " a",
+      " 30",
+      "%",
+      " discount",
+      ".",
+      " "
+     ],
+     "accept": 7
+    },
+    {
+     "candidates": [
+      "\n",
+      "Disc",
+      "%",
+      " of",
+      " $",
+      "100",
+      " is"
+     ],
+     "accept": 2
+    },
+    {
+     "candidates": [
+      "ount",
+      " amount",
+      " =",
+      " 30",
+      "%",
+      " of",
+      " $"
+     ],
+     "accept": 7
+    },
+    {
+     "candidates": [
+      "100",
+      " =",
+      " 0",
+      ".",
+      "30",
+      " *",
+      " $"
+     ],
+     "accept": 7
+    },
+    {
+     "candidates": [
+      "100",
+      " =",
+      " $",
+      "30",
+      ".",
+      "\n",
+      "\n"
+     ],
+     "accept": 7
+    },
+    {
+     "candidates": [
+      "Step",
+      " 2",
+      ":",
+      " Sub",
+      "t",
+      "ract",
+      " the"
+     ],
+     "accept": 7
+    },
+    {
+     "candidates": [
+      " discount",
+      " amount",
+      " from",
+      " the",
+      " original",
+      " cost",
+      "."
+     ],
+     "accept": 7
+    },
+    {
+     "candidates": [
+      "\n",
+      "Gro",
+      " grooming",
+      " cost",
+      " =",
+      " Original",
+      " cost"
+     ],
+     "accept": 2
+    },
+    {
+     "candidates": [
+      "oming",
+      " cost",
+      " after",
+      " discount",
+      " =",
+      " $",
+      "100"
+     ],
+     "accept": 7
+    },
+    {
+     "candidates": [
+      " -",
+      " $",
+      "30",
+      " =",
+      " $",
+      "70",
+      "."
+     ],
+     "accept": 7
+    },
+    {
+     "candidates": [
+      "\n",
+      "\n",
+      "The",
+      " final",
+      " answer",
+      " is",
+      " $"
+     ],
+     "accept": 7
+    },
+    {
+     "candidates": [
+      "70",
+      "."
+     ],
+     "accept": 2
+    }
+   ]
+  }
+ }
+];
+
+let exampleIdx = 1, leftIdx = 0, predIdx = 0, leftTimer = null, rightTimer = null, holdTimer = null;
+
+const leftBox = document.getElementById('left-box');
+const rightBox = document.getElementById('right-box');
+const arrowLabel = document.getElementById('arrow-label');
+
+function current() { return EXAMPLES[exampleIdx]; }
+
+// One model token can hold several lines, so it renders as a group of nodes that are coloured and removed together.
+function renderToken(box, text, cls) {
+  const nodes = [];
+  text.split('\n').forEach((part, i) => {
+    if (i > 0) nodes.push(document.createElement('br'));
+    if (part !== '') {
+      const span = document.createElement('span');
+      span.className = 'tok' + (cls ? ' ' + cls : '');
+      span.textContent = part;
+      nodes.push(span);
+    }
+  });
+  nodes.forEach(node => box.appendChild(node));
+  return nodes;
+}
+
+function setClass(nodes, cls) {
+  nodes.forEach(node => { if (node.classList) { node.classList.remove('proposed', 'accepted', 'fading', 'skipped'); node.classList.add(cls); } });
+}
+
+function addPrompt(box) {
+  const div = document.createElement('div');
+  div.className = 'prompt';
+  div.textContent = current().prompt;
+  box.appendChild(div);
+}
+
+function fitBoxes() {
+  const ex = current();
+  leftBox.style.height = rightBox.style.height = 'auto';
+  [leftBox, rightBox].forEach(addPrompt);
+  ex.ar.tokens.forEach(t => renderToken(leftBox, t, 'accepted'));
+  ex.ptp.calls.forEach(c => c.candidates.slice(0, c.accept).forEach(t => renderToken(rightBox, t, 'accepted')));
+  const h = Math.max(leftBox.scrollHeight, rightBox.scrollHeight) + 'px';
+  leftBox.innerHTML = rightBox.innerHTML = '';
+  [leftBox, rightBox].forEach(addPrompt);
+  leftBox.style.height = rightBox.style.height = h;
+  document.querySelector('.arrow-wrap').style.height = h;
+}
+
+function addLeftToken() {
+  const ex = current();
+  if (leftIdx >= ex.ar.tokens.length) return;
+  renderToken(leftBox, ex.ar.tokens[leftIdx++], 'accepted');
+  leftTimer = setTimeout(addLeftToken, ex.ar.msPerToken * SLOWDOWN);
+}
+
+function greyOutRemainingLeft() {
+  clearTimeout(leftTimer);
+  const ex = current();
+  while (leftIdx < ex.ar.tokens.length) renderToken(leftBox, ex.ar.tokens[leftIdx++], 'skipped');
+}
+
+function runRight() {
+  const ex = current();
+  if (predIdx >= ex.ptp.calls.length) { finish(); return; }
+  const call = ex.ptp.calls[predIdx];
+  const groups = call.candidates.map((t, i) => renderToken(rightBox, t, i === 0 ? 'accepted' : 'proposed'));
+  rightTimer = setTimeout(() => {
+    groups.forEach((nodes, i) => {
+      if (i < call.accept) setClass(nodes, 'accepted');
+      else nodes.forEach(node => node.remove());
+    });
+    predIdx++;
+    runRight();
+  }, ex.ptp.msPerCall * SLOWDOWN);
+}
+
+function finish() {
+  greyOutRemainingLeft();
+  holdTimer = setTimeout(() => { exampleIdx = (exampleIdx + 1) % EXAMPLES.length; restart(); }, HOLD_MS);
+}
+
+function restart() {
+  clearTimeout(leftTimer); clearTimeout(rightTimer); clearTimeout(holdTimer);
+  leftIdx = 0; predIdx = 0;
+  leftBox.innerHTML = rightBox.innerHTML = '';
+  const ex = current();
+  const arTokPerSec = 1000 / ex.ar.msPerToken;
+  const ptpTokPerSec = 1000 * ex.ptp.calls.reduce((n, c) => n + c.accept, 0) / (ex.ptp.calls.length * ex.ptp.msPerCall);
+  arrowLabel.textContent = `${Math.round(arTokPerSec)} → ${Math.round(ptpTokPerSec)}`;
+  fitBoxes();
+  addLeftToken();
+  runRight();
+}
+
+restart();
+</script>
+
+</body>
+</html>
